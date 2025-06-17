@@ -4,7 +4,6 @@ Load, preprocess, prepare, and save the Titanic dataset.
 import os
 
 import pandas as pd
-from prefect import flow, task
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
@@ -39,7 +38,7 @@ def load_data(train: bool = True, data_folder = None) -> pd.DataFrame:
         y_test = pd.read_csv(os.path.join(DATA_FOLDER,"gender_submission.csv"), index_col='PassengerId')
         df = pd.merge(df,y_test,left_index=True, right_index=True, how='left')
     return df
-@task
+    
 def clean_data(df):
     """
     clean the Titanic dataset.
@@ -55,7 +54,7 @@ def clean_data(df):
                 .dropna()\
                 .drop_duplicates()
         
-@task
+
 def prepare_data(df:pd.DataFrame ,fit=True, survive=True) -> tuple[pd.DataFrame, pd.Series]: 
     """
     Prepare the Titanic dataset for training.
@@ -113,18 +112,8 @@ if __name__ == "__main__":
     print(df.shape)
     df = clean_data(df)
     X, y = prepare_data(df)
-    return X, y
-
-if __name__ == "__main__":
-    # Example usage
-    # df = load_data(train=False)
-    # print(df.shape)
-    # df = clean_data(df)
-    # X, y = prepare_data(df)
-    # print(X.head())
-    # print(y.head())
-
-    titanic_data_pipeline(train=True)
+    print(X.head())
+    print(y.head())
     
     upload_data(X, 'titanic_features.csv')
     # # Save the processed data
