@@ -14,3 +14,14 @@ loguru
 
 # Workflow Orchestration
 prefect
+
+# Cloud Storage
+google-cloud-storage
+
+# Data Viz
+matplotlib
+seaborn
+plotly
+
+# Web 
+streamlit

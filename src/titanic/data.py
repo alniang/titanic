@@ -2,25 +2,31 @@
 Load, preprocess, prepare, and save the Titanic dataset.
 """
 import os
+
 import pandas as pd
 from prefect import flow, task
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from titanic.registry import load_model, save_model
-from titanic.params import DATA_FOLDER,NUMERIC_FEATURES,CAT_FEATURES
+from google.cloud import storage
 
-@task
-def load_data(train: bool = True) -> pd.DataFrame:
+from titanic.registry import load_model, save_model
+from titanic.params import DATA_FOLDER,NUMERIC_FEATURES,CAT_FEATURES, BUCKET_NAME
+
+
+
+def load_data(train: bool = True, data_folder = None) -> pd.DataFrame:
     """
     Load the Titanic dataset from a CSV file.
     
     Returns:
         DataFrame: The loaded Titanic dataset.
     """
-    if not os.path.exists(DATA_FOLDER):
-        raise FileNotFoundError(f"The data folder '{DATA_FOLDER}' does not exist.")
+    if not data_folder:
+        data_folder = DATA_FOLDER
+    if not os.path.exists(data_folder):
+        raise FileNotFoundError(f"The data folder '{data_folder}' does not exist.")
     # Without ternary operator
     # if train == True : 
     #     name = 'train'
@@ -28,8 +34,7 @@ def load_data(train: bool = True) -> pd.DataFrame:
     #     name = 'test'
     # Using ternary operator for brevity
     name = 'train' if train else 'test'
-    # df = pd.read_csv(os.path.join(DATA_FOLDER, f'{name}.csv'),index_col='PassengerId')
-    df = pd.read_csv("https://storage.googleapis.com/schoolofdata-datasets/titanic-train.csv")
+    df = pd.read_csv(os.path.join(data_folder, f'{name}.csv'),index_col='PassengerId')
     if not train :
         y_test = pd.read_csv(os.path.join(DATA_FOLDER,"gender_submission.csv"), index_col='PassengerId')
         df = pd.merge(df,y_test,left_index=True, right_index=True, how='left')
@@ -88,18 +93,24 @@ def prepare_data(df:pd.DataFrame ,fit=True, survive=True) -> tuple[pd.DataFrame,
     X_scaled = preprocessor.transform(X)
     return X_scaled, y
 
-@flow(name="titanic_data_pipeline")
-def titanic_data_pipeline(train: bool = True) -> tuple[pd.DataFrame, pd.Series]:
-    """
-    Main flow to load, clean, and prepare the Titanic dataset.
-    
-    Args:
-        train (bool): Whether to load the training dataset or the test dataset.
-        
-    Returns:
-        tuple: A tuple containing [X,y] the features DataFrame and the target Series.
-    """
-    df = load_data(train)
+
+def upload_data(data:pd.DataFrame, source_file_name: str) -> bool:
+    """Uploads a file to the bucket."""
+    destination_blob_name = f"titanic-data/{source_file_name}"
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(BUCKET_NAME)
+    blob = bucket.blob(destination_blob_name)
+    # Convert DataFrame to CSV string
+    blob.upload_from_string(data.to_csv(index=False), content_type='text/csv')
+
+    print(
+        f"🔥 File {source_file_name} uploaded to {destination_blob_name}."
+    )
+
+if __name__ == "__main__":
+    # Example usage
+    df = load_data(train=False)
+    print(df.shape)
     df = clean_data(df)
     X, y = prepare_data(df)
     return X, y
@@ -115,6 +126,7 @@ if __name__ == "__main__":
 
     titanic_data_pipeline(train=True)
     
+    upload_data(X, 'titanic_features.csv')
     # # Save the processed data
     # X.to_csv('titanic_features.csv', index=False)
     # y.to_csv('titanic_target.csv', index=False)

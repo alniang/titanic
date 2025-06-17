@@ -3,7 +3,8 @@ truc:
 
 install :
 	@echo "Installing the application..."
-	pip install -r requirements.in --quiet
+	pip-compile requirements.in
+	pip install -r requirements.txt --quiet
 	pip install -e . --quiet
 	@echo "✅ Application installed successfully. "
 
