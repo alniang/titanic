@@ -5,6 +5,7 @@ WORKDIR /app
 # Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# Install Local Python packages
 COPY src/ src/
 COPY pyproject.toml .
 RUN pip install  .
@@ -15,4 +16,4 @@ COPY api/ api/
 COPY models/ models/
 
 
-CMD uvicorn api.webapi:my_api --host 0.0.0.0 --port $PORT 
+CMD ["sh","-c","uvicorn api.webapi:my_api --host 0.0.0.0 --port $PORT"]
